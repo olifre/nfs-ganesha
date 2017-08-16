@@ -41,11 +41,14 @@
 #include <os/mntent.h>
 #include <os/quota.h>
 #include <dlfcn.h>
+#include "mdcache.h"
+#include "pnfs_utils.h"
 #include "gsh_list.h"
 #include "fsal_convert.h"
 #include "config_parsing.h"
 #include "FSAL/fsal_commonlib.h"
 #include "FSAL/fsal_config.h"
+#include "vfs/internal.h"
 #include "fsal_handle_syscalls.h"
 #include "vfs_methods.h"
 #include "nfs_exports.h"
@@ -609,7 +612,54 @@ fsal_status_t vfs_create_export(struct fsal_module *fsal_hdl,
 
 	op_ctx->fsal_export = &myself->export;
 
-	myself->export.up_ops = up_ops;
+	/* Stack MDCACHE on top */
+	fsal_status = mdcache_export_init(up_ops, &myself->export.up_ops);
+	if (FSAL_IS_ERROR(fsal_status)) {
+		LogDebug(COMPONENT_FSAL, "MDCACHE creation failed for VFS");
+		goto err_cleanup;
+	}
+
+	myself->pnfs_ds_enabled =
+		myself->export.exp_ops.fs_supports(&myself->export,
+						   fso_pnfs_ds_supported) &&
+		myself->pnfs_param.pnfs_enabled;
+	myself->pnfs_mds_enabled =
+		myself->export.exp_ops.fs_supports(&myself->export,
+						   fso_pnfs_mds_supported) &&
+		myself->pnfs_param.pnfs_enabled;
+
+	if (myself->pnfs_ds_enabled) {
+		struct fsal_pnfs_ds *pds = NULL;
+
+		fsal_status = fsal_hdl->m_ops.
+			fsal_pnfs_ds(fsal_hdl, parse_node, &pds);
+		if (fsal_status.major != ERR_FSAL_NO_ERROR)
+			goto err_cleanup;
+
+		/* special case: server_id matches export_id */
+		pds->id_servers = op_ctx->ctx_export->export_id;
+		pds->mds_export = op_ctx->ctx_export;
+
+		if (!pnfs_ds_insert(pds)) {
+			LogCrit(COMPONENT_CONFIG,
+				"Server id %d already in use.",
+				pds->id_servers);
+			fsal_status.major = ERR_FSAL_EXIST;
+			fsal_pnfs_ds_fini(pds);
+			gsh_free(pds);
+			goto err_cleanup;
+		}
+
+		LogInfo(COMPONENT_FSAL,
+			"vfs_fsal_create: pnfs DS was enabled for [%s]",
+			op_ctx->ctx_export->fullpath);
+	}
+	if (myself->pnfs_mds_enabled) {
+		LogInfo(COMPONENT_FSAL,
+			"vfs_fsal_create: pnfs MDS was enabled for [%s]",
+			op_ctx->ctx_export->fullpath);
+		export_ops_pnfs(&myself->export.exp_ops);
+	}
 
 	return fsalstat(ERR_FSAL_NO_ERROR, 0);
 

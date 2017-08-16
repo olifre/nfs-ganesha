@@ -50,11 +50,22 @@ static struct config_item_list fsid_types[] = {
 	CONFIG_LIST_EOL
 };
 
+static struct config_item pnfs_params[] = {
+	CONF_MAND_UI32("Stripe_Unit", 8192, 1024*1024, 1024,
+		       vfs_exp_pnfs_parameter, stripe_unit),
+	CONF_ITEM_BOOL("pnfs_enabled", false,
+		       vfs_exp_pnfs_parameter, pnfs_enabled),
+	CONFIG_EOL
+};
+
 static struct config_item export_params[] = {
 	CONF_ITEM_NOOP("name"),
 	CONF_ITEM_TOKEN("fsid_type", FSID_NO_TYPE,
 			fsid_types,
 			vfs_fsal_export, fsid_type),
+	CONF_ITEM_BLOCK("PNFS", pnfs_params,
+			noop_conf_init, noop_conf_commit,
+			vfs_fsal_export, pnfs_param),
 	CONFIG_EOL
 };
 
