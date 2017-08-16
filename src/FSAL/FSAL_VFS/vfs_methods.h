@@ -77,33 +77,6 @@ struct vfs_filesystem_export_map {
 	struct glist_head on_filesystems;
 };
 
-/* pNFS types. */
-struct vfs_ds {
-	struct fsal_ds_handle ds; /*< Public DS handle */
-	vfs_file_handle_t wire; /*< Wire data */
-	struct vfs_filesystem *vfs_fs; /*< Related Vfs filesystem */
-	bool connected; /*< True if the handle has been connected */
-};
-
-/* this needs to be refactored to put ipport inside sockaddr_in */
-struct vfs_pnfs_ds_parameter {
-	struct glist_head ds_list;
-	struct sockaddr_in ipaddr;
-	unsigned short ipport;
-	unsigned int id;
-};
-
-struct vfs_pnfs_parameter {
-	struct glist_head ds_list;
-};
-
-struct vfs_fsal_module {
-	struct fsal_module fsal;
-	struct fsal_staticfsinfo_t fs_info;
-	struct vfs_pnfs_parameter pnfs_param;
-};
-
-
 void vfs_unexport_filesystems(struct vfs_fsal_export *exp);
 
 /* private helpers from export

@@ -44,6 +44,7 @@
 #include <fcntl.h>
 #include "FSAL/fsal_commonlib.h"
 #include "../../fsal_private.h"
+#include "internal.h"
 #include "../vfs_methods.h"
 #include "pnfs_utils.h"
 #include "nfs_exports.h"

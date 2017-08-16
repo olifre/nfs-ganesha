@@ -40,7 +40,6 @@
 #include "fsal.h"
 #include "internal.h"
 #include "FSAL/fsal_init.h"
-#include "fsal_handle_syscalls.h"
 
 /* VFS FSAL module private storage
  */
@@ -51,12 +50,6 @@
 #else
 #define VFS_SUPPORTED_ATTRIBUTES ((const attrmask_t) (ATTRS_POSIX | ATTR_ACL))
 #endif
-
-struct vfs_fsal_module {
-	struct fsal_module fsal;
-	struct fsal_staticfsinfo_t fs_info;
-	/* vfsfs_specific_initinfo_t specific_info;  placeholder */
-};
 
 const char myname[] = "VFS";
 
@@ -86,6 +79,77 @@ static struct fsal_staticfsinfo_t default_posix_info = {
 	.link_supports_permission_checks = false,
 };
 
+static void *dataserver_init(void *link_mem, void *self_struct)
+{
+	struct vfs_pnfs_ds_parameter *child_param
+		= (struct vfs_pnfs_ds_parameter *)self_struct;
+
+	assert(link_mem != NULL || self_struct != NULL);
+
+	if (link_mem == NULL) {
+		struct glist_head *dslist = (struct glist_head *)self_struct;
+		struct vfs_pnfs_parameter *pnfs_param;
+
+		pnfs_param = container_of(dslist,
+					  struct vfs_pnfs_parameter,
+					  ds_list);
+		glist_init(&pnfs_param->ds_list);
+		return self_struct;
+	} else if (self_struct == NULL) {
+		child_param = gsh_calloc(1,
+				 sizeof(struct vfs_pnfs_ds_parameter));
+
+		glist_init(&child_param->ds_list);
+		return (void *)child_param;
+	} else {
+		assert(glist_empty(&child_param->ds_list));
+
+		gsh_free(child_param);
+		return NULL;
+	}
+}
+
+static int dataserver_commit(void *node, void *link_mem, void *self_struct,
+			     struct config_error_type *err_type)
+{
+	struct glist_head *ds_head
+		= (struct glist_head *)link_mem;
+	struct vfs_pnfs_ds_parameter *child_param
+		= (struct vfs_pnfs_ds_parameter *)self_struct;
+
+	glist_add_tail(ds_head, &child_param->ds_list);
+	return 0;
+}
+
+static struct config_item ds_params[] = {
+	CONF_MAND_IP_ADDR("DS_Addr", "127.0.0.1",
+			  vfs_pnfs_ds_parameter, ipaddr),
+	CONF_ITEM_UI16("DS_Port", 1024, UINT16_MAX, 2049,
+		       vfs_pnfs_ds_parameter, ipport),
+	CONF_MAND_UI32("DS_Id", 1, UINT32_MAX, 1,
+		       vfs_pnfs_ds_parameter, id),
+	CONFIG_EOL
+};
+
+static int vfs_conf_pnfs_commit(void *node,
+				   void *link_mem,
+				   void *self_struct,
+				   struct config_error_type *err_type)
+{
+	/* struct vfs_pnfs_param *lpp = self_struct; */
+
+	/* Verifications/parameter checking to be added here */
+
+	return 0;
+}
+
+static struct config_item pnfs_params[] = {
+	CONF_ITEM_BLOCK("DataServer", ds_params,
+			dataserver_init, dataserver_commit,
+			vfs_pnfs_parameter, ds_list),
+	CONFIG_EOL
+};
+
 static struct config_item vfs_params[] = {
 	CONF_ITEM_BOOL("link_support", true,
 		       fsal_staticfsinfo_t, link_support),
@@ -107,6 +171,9 @@ static struct config_item vfs_params[] = {
 		       fsal_staticfsinfo_t, pnfs_mds),
 	CONF_ITEM_BOOL("PNFS_DS", true,
 		       fsal_staticfsinfo_t, pnfs_ds),
+	CONF_ITEM_BLOCK("PNFS", pnfs_params,
+			noop_conf_init, vfs_conf_pnfs_commit,
+			vfs_fsal_module, pnfs_param),
 	CONFIG_EOL
 };
 

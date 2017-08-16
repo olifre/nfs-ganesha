@@ -32,6 +32,7 @@
 #include "fsal_api.h"
 #include "FSAL/access_check.h"
 #include "fsal_convert.h"
+#include "internal.h"
 #include "../vfs_methods.h"
 #include <unistd.h>
 #include <fcntl.h>
