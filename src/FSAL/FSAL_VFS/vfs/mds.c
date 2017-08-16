@@ -211,11 +211,11 @@ nfsstat4 vfs_getdeviceinfo(struct fsal_module *fsal_hdl,
 			(ntohl(ds->ipaddr.sin_addr.s_addr) & 0x00FF0000) >> 16,
 			(ntohl(ds->ipaddr.sin_addr.s_addr) & 0x0000FF00) >> 8,
 			ntohl(ds->ipaddr.sin_addr.s_addr) & 0x000000FF,
-			ntohs(ds->ipport), ds->id);
+			ds->ipport, ds->id);
 
 		host.proto = IPPROTO_TCP;
 		host.addr = ntohl(ds->ipaddr.sin_addr.s_addr);
-		host.port = ntohs(ds->ipport);
+		host.port = ds->ipport;
 		nfs_status = FSAL_encode_v4_multipath(
 				da_addr_body,
 				1,
