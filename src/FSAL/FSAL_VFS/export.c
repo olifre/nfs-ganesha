@@ -41,7 +41,6 @@
 #include <os/mntent.h>
 #include <os/quota.h>
 #include <dlfcn.h>
-#include "mdcache.h"
 #include "pnfs_utils.h"
 #include "gsh_list.h"
 #include "fsal_convert.h"
@@ -612,12 +611,7 @@ fsal_status_t vfs_create_export(struct fsal_module *fsal_hdl,
 
 	op_ctx->fsal_export = &myself->export;
 
-	/* Stack MDCACHE on top */
-	fsal_status = mdcache_export_init(up_ops, &myself->export.up_ops);
-	if (FSAL_IS_ERROR(fsal_status)) {
-		LogDebug(COMPONENT_FSAL, "MDCACHE creation failed for VFS");
-		goto err_cleanup;
-	}
+	myself->export.up_ops = up_ops;
 
 	myself->pnfs_ds_enabled =
 		myself->export.exp_ops.fs_supports(&myself->export,
