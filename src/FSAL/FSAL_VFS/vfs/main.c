@@ -328,6 +328,7 @@ MODULE_INIT void vfs_init(void)
 	 */
 	myself->m_ops.getdeviceinfo = vfs_getdeviceinfo;
 	myself->m_ops.fsal_pnfs_ds_ops = vfs_pnfs_ds_ops_init;
+	myself->m_ops.fs_da_addr_size = vfs_fs_da_addr_size;
 }
 
 MODULE_FINI void vfs_unload(void)
