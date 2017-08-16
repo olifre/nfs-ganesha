@@ -45,6 +45,7 @@
 #include "fsal_handle_syscalls.h"
 #include "FSAL/fsal_commonlib.h"
 #include "vfs_methods.h"
+#include "vfs/internal.h"
 #include <os/subr.h>
 #include "subfsal.h"
 #include "city.h"
@@ -143,7 +144,8 @@ struct vfs_fsal_obj_handle *alloc_handle(int dirfd,
 	vfs_handle_ops_init(&hdl->obj_handle.obj_ops);
 	if (vfs_sub_init_handle(myself, hdl, path) < 0)
 		goto spcerr;
-
+	if (myself->pnfs_mds_enabled)
+		handle_ops_pnfs(&hdl->obj_handle.obj_ops);
 	return hdl;
 
  spcerr:
