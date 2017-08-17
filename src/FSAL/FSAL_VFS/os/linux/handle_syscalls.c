@@ -245,6 +245,8 @@ int vfs_map_name_to_handle_at(int fd,
 		fh->handle_data[0] |= HANDLE_TYPE_32;
 	}
 
+	kernel_fh->f_handle[kernel_fh->handle_bytes-1] = 0x00;
+
 	/* Pack opaque handle into wire handle */
 	if (fh->handle_len + kernel_fh->handle_bytes > VFS_HANDLE_LEN) {
 		/* We just can't fit this handle... */
